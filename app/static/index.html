@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PromptPilot</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a; color: #e2e8f0; min-height: 100vh;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 0; border-bottom: 1px solid #1e293b; margin-bottom: 24px;
+  }
+  .logo { font-size: 22px; font-weight: 700; color: #38bdf8; }
+  .logo span { color: #e2e8f0; }
+  nav button {
+    background: transparent; border: 1px solid #334155; color: #cbd5e1;
+    padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 14px;
+    transition: all 0.15s;
+  }
+  nav button:hover { background: #1e293b; color: white; }
+  nav button.active { background: #38bdf8; color: #0f172a; border-color: #38bdf8; }
+  nav button.danger { border-color: #ef4444; color: #ef4444; }
+  nav button.danger:hover { background: #ef4444; color: white; }
+
+  .hidden { display: none !important; }
+
+  /* Auth screen */
+  #authScreen {
+    max-width: 400px; margin: 80px auto;
+    background: #1e293b; padding: 32px; border-radius: 12px;
+    border: 1px solid #334155;
+  }
+  #authScreen h2 { margin-bottom: 20px; color: #38bdf8; text-align: center; }
+  input, textarea, select {
+    width: 100%; padding: 10px 12px; margin-bottom: 12px;
+    background: #0f172a; border: 1px solid #334155;
+    color: #e2e8f0; border-radius: 6px; font-size: 14px;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 120px; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: #38bdf8; }
+  button.primary {
+    width: 100%; background: #38bdf8; color: #0f172a;
+    border: none; padding: 11px; border-radius: 6px; font-size: 15px;
+    font-weight: 600; cursor: pointer; transition: 0.15s;
+  }
+  button.primary:hover { background: #0ea5e9; }
+  .switch { text-align: center; margin-top: 12px; font-size: 13px; color: #94a3b8; }
+  .switch a { color: #38bdf8; cursor: pointer; text-decoration: none; }
+  .error { color: #ef4444; font-size: 13px; margin-bottom: 10px; min-height: 18px; }
+
+  /* Main app */
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .card {
+    background: #1e293b; padding: 18px; border-radius: 10px;
+    border: 1px solid #334155; margin-bottom: 12px;
+    transition: 0.15s;
+  }
+  .card:hover { border-color: #38bdf8; }
+  .card h3 { color: #38bdf8; margin-bottom: 6px; font-size: 16px; }
+  .card p { color: #94a3b8; font-size: 13px; margin-bottom: 10px; }
+  .card .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tag {
+    background: #0f172a; color: #38bdf8; padding: 3px 8px;
+    border-radius: 4px; font-size: 11px; border: 1px solid #38bdf8;
+  }
+  .card .actions { display: flex; gap: 8px; }
+  .card .actions button {
+    background: transparent; border: 1px solid #334155;
+    color: #cbd5e1; padding: 5px 10px; border-radius: 4px;
+    cursor: pointer; font-size: 12px;
+  }
+  .card .actions button:hover { background: #334155; }
+  .card .actions button.del { border-color: #ef4444; color: #ef4444; }
+  .card .actions button.del:hover { background: #ef4444; color: white; }
+
+  .panel {
+    background: #1e293b; padding: 24px; border-radius: 10px;
+    border: 1px solid #334155;
+  }
+  .panel h2 { color: #38bdf8; margin-bottom: 16px; font-size: 18px; }
+  label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .output {
+    background: #0f172a; padding: 14px; border-radius: 6px;
+    border: 1px solid #334155; white-space: pre-wrap;
+    font-size: 14px; line-height: 1.5; color: #e2e8f0;
+    min-height: 80px;
+  }
+  .output.loading { color: #94a3b8; font-style: italic; }
+  .meta { font-size: 11px; color: #64748b; margin-top: 6px; }
+  .meta b { color: #38bdf8; }
+
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .compare-card {
+    background: #0f172a; padding: 14px; border-radius: 6px;
+    border: 1px solid #334155;
+  }
+  .compare-card h4 { color: #38bdf8; font-size: 13px; margin-bottom: 8px; }
+  .compare-card .output { background: transparent; border: none; padding: 0; }
+
+  .versions-list { max-height: 300px; overflow-y: auto; }
+  .version-item {
+    background: #0f172a; padding: 10px; border-radius: 6px;
+    margin-bottom: 8px; border: 1px solid #334155;
+  }
+  .version-item b { color: #38bdf8; }
+  .version-item small { color: #64748b; font-size: 11px; }
+  .version-item pre {
+    color: #94a3b8; font-size: 12px; margin-top: 6px;
+    white-space: pre-wrap; word-break: break-word;
+  }
+
+  #toast {
+    position: fixed; top: 20px; right: 20px;
+    background: #1e293b; padding: 12px 20px; border-radius: 8px;
+    border-left: 4px solid #38bdf8; color: white;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    z-index: 1000;
+  }
+  #toast.show { opacity: 1; }
+  #toast.error { border-left-color: #ef4444; }
+
+  @media (max-width: 700px) {
+    .grid-2, .compare-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- ===== AUTH SCREEN ===== -->
+<div id="authScreen" class="container hidden">
+  <div style="text-align:center; margin-bottom:20px;">
+    <div class="logo" style="font-size:32px;">Prompt<span>Pilot</span> 🚀</div>
+  </div>
+  <div id="authCard" style="background:#1e293b;padding:32px;border-radius:12px;border:1px solid #334155;">
+    <h2 id="authTitle">Login</h2>
+    <div id="authError" class="error"></div>
+    <input id="authEmail" type="email" placeholder="Email" />
+    <input id="authPassword" type="password" placeholder="Password" />
+    <button class="primary" onclick="submitAuth()">Login</button>
+    <div class="switch">
+      <span id="switchText">No account? </span>
+      <a onclick="toggleAuth()">Register</a>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="mainApp" class="container hidden">
+  <header>
+    <div class="logo">Prompt<span>Pilot</span> 🚀</div>
+    <nav>
+      <button data-tab="prompts" onclick="showTab('prompts')" class="active">📝 Prompts</button>
+      <button data-tab="playground" onclick="showTab('playground')">🤖 Playground</button>
+      <button class="danger" onclick="logout()">Logout</button>
+    </nav>
+  </header>
+
+  <!-- ===== PROMPTS TAB ===== -->
+  <div id="tab-prompts">
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h2>Your Prompts</h2>
+        <button class="primary" style="width:auto;padding:9px 18px;" onclick="showEditor()">+ New Prompt</button>
+      </div>
+      <input id="searchBox" placeholder="🔍 Search prompts..." oninput="loadPrompts()" />
+      <div id="promptList"></div>
+    </div>
+
+    <!-- Editor (hidden by default) -->
+    <div id="editorPanel" class="panel hidden" style="margin-top:16px;">
+      <h2 id="editorTitle">New Prompt</h2>
+      <label>Title</label>
+      <input id="pTitle" placeholder="e.g. Friendly Email Generator" />
+      <label>Description</label>
+      <input id="pDesc" placeholder="What does this prompt do?" />
+      <label>Content</label>
+      <textarea id="pContent" placeholder="Write your prompt here..."></textarea>
+      <label>Tags (comma-separated)</label>
+      <input id="pTags" placeholder="email, marketing, gpt-4" />
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="primary" style="width:auto;padding:10px 20px;" onclick="savePrompt()">Save</button>
+        <button style="background:transparent;border:1px solid #334155;color:#cbd5e1;padding:10px 20px;border-radius:6px;cursor:pointer;" onclick="hideEditor()">Cancel</button>
+      </div>
+      <div id="versionsPanel" class="hidden" style="margin-top:20px;">
+        <h2 style="font-size:15px;">📜 Version History</h2>
+        <div id="versionsList" class="versions-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PLAYGROUND TAB ===== -->
+  <div id="tab-playground" class="hidden">
+    <div class="panel">
+      <h2>🤖 AI Playground</h2>
+      <label>Prompt</label>
+      <textarea id="playPrompt" placeholder="Ask anything..."></textarea>
+
+      <div class="grid-2">
+        <div>
+          <label>Model</label>
+          <select id="playModel">
+  <option value="openai/gpt-oss-120b">GPT OSS 120B (Best Quality)</option>
+  <option value="openai/gpt-oss-20b">GPT OSS 20B (Fast)</option>
+  <option value="qwen/qwen3.8-27b">Qwen 3.8 27B</option>
+  
+</select>
+        </div>
+        <div>
+          <label>Max tokens</label>
+          <input id="playMax" type="number" value="500" min="10" max="4000" />
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button class="primary" style="width:auto;padding:10px 24px;" onclick="runLLM()">▶ Run</button>
+        <button style="background:transparent;border:1px solid #38bdf8;color:#38bdf8;padding:10px 24px;border-radius:6px;cursor:pointer;" onclick="compareLLM()">⚖ Compare 2 Models</button>
+      </div>
+
+      <div id="singleOutput"></div>
+      <div id="compareOutput"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== STATE ======
+const API = "/api/v1";
+let token = localStorage.getItem("token") || null;
+let isRegister = false;
+let editingPromptId = null;
+
+// ====== HELPERS ======
+function $(id) { return document.getElementById(id); }
+
+function toast(msg, isError = false) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "show" + (isError ? " error" : "");
+  setTimeout(() => { t.className = ""; }, 3000);
+}
+
+async function api(path, opts = {}) {
+  const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(API + path, { ...opts, headers });
+  if (res.status === 401) { logout(); throw new Error("Session expired"); }
+  if (!res.ok) {
+    let detail = "Error " + res.status;
+    try { const j = await res.json(); detail = j.detail || JSON.stringify(j); } catch {}
+    throw new Error(detail);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+// ====== AUTH ======
+function toggleAuth() {
+  isRegister = !isRegister;
+  $("authTitle").textContent = isRegister ? "Register" : "Login";
+  $("switchText").textContent = isRegister ? "Already have an account? " : "No account? ";
+  document.querySelector("#authCard .switch a").textContent = isRegister ? "Login" : "Register";
+  $("authError").textContent = "";
+}
+
+async function submitAuth() {
+  const email = $("authEmail").value.trim();
+  const password = $("authPassword").value;
+  $("authError").textContent = "";
+  if (!email || !password) { $("authError").textContent = "Email and password required"; return; }
+  try {
+    if (isRegister) {
+      await api("/auth/register", { method: "POST", body: JSON.stringify({ email, password }) });
+      toast("Registered! Logging in...");
+      isRegister = false;
+    }
+    const form = new URLSearchParams();
+    form.append("username", email);
+    form.append("password", password);
+    const res = await fetch(API + "/auth/login", { method: "POST", body: form });
+    if (!res.ok) throw new Error("Invalid credentials");
+    const data = await res.json();
+    token = data.access_token;
+    localStorage.setItem("token", token);
+    enterApp();
+  } catch (e) {
+    $("authError").textContent = e.message;
+  }
+}
+
+function logout() {
+  token = null;
+  localStorage.removeItem("token");
+  $("mainApp").classList.add("hidden");
+  $("authScreen").classList.remove("hidden");
+}
+
+function enterApp() {
+  $("authScreen").classList.add("hidden");
+  $("mainApp").classList.remove("hidden");
+  loadPrompts();
+}
+
+// ====== TABS ======
+function showTab(name) {
+  document.querySelectorAll("nav button[data-tab]").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  $("tab-prompts").classList.toggle("hidden", name !== "prompts");
+  $("tab-playground").classList.toggle("hidden", name !== "playground");
+}
+
+// ====== PROMPTS ======
+async function loadPrompts() {
+  try {
+    const q = $("searchBox").value.trim();
+    const list = await api("/prompts" + (q ? "?q=" + encodeURIComponent(q) : ""));
+    const div = $("promptList");
+    if (!list.length) {
+      div.innerHTML = '<p style="color:#64748b;text-align:center;padding:30px;">No prompts yet. Click "+ New Prompt".</p>';
+      return;
+    }
+    div.innerHTML = list.map(p => `
+      <div class="card">
+        <h3>${escapeHtml(p.title)}</h3>
+        ${p.description ? `<p>${escapeHtml(p.description)}</p>` : ""}
+        ${p.tags ? `<div class="tags">${p.tags.split(",").map(t => `<span class="tag">${escapeHtml(t.trim())}</span>`).join("")}</div>` : ""}
+        <div class="actions">
+          <button onclick="editPrompt(${p.id})">✏️ Edit</button>
+          <button onclick="useInPlayground(${p.id})">▶ Run</button>
+          <button class="del" onclick="deletePrompt(${p.id})">🗑 Delete</button>
+        </div>
+      </div>
+    `).join("");
+  } catch (e) { toast(e.message, true); }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+function showEditor() {
+  editingPromptId = null;
+  $("editorTitle").textContent = "New Prompt";
+  $("pTitle").value = ""; $("pDesc").value = ""; $("pContent").value = ""; $("pTags").value = "";
+  $("editorPanel").classList.remove("hidden");
+  $("versionsPanel").classList.add("hidden");
+  $("pTitle").focus();
+}
+
+function hideEditor() { $("editorPanel").classList.add("hidden"); }
+
+async function editPrompt(id) {
+  try {
+    const p = await api("/prompts/" + id);
+    editingPromptId = id;
+    $("editorTitle").textContent = "Edit Prompt";
+    $("pTitle").value = p.title;
+    $("pDesc").value = p.description || "";
+    $("pContent").value = p.content;
+    $("pTags").value = p.tags || "";
+    $("editorPanel").classList.remove("hidden");
+    loadVersions(id);
+    $("pTitle").focus();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function savePrompt() {
+  const payload = {
+    title: $("pTitle").value.trim(),
+    description: $("pDesc").value.trim() || null,
+    content: $("pContent").value.trim(),
+    tags: $("pTags").value.trim() || null,
+  };
+  if (!payload.title || !payload.content) { toast("Title and content are required", true); return; }
+  try {
+    if (editingPromptId) {
+      await api("/prompts/" + editingPromptId, { method: "PUT", body: JSON.stringify(payload) });
+      toast("Prompt updated ✅");
+    } else {
+      const created = await api("/prompts", { method: "POST", body: JSON.stringify(payload) });
+      editingPromptId = created.id;
+      toast("Prompt created ✅");
+    }
+    loadPrompts();
+    loadVersions(editingPromptId);
+  } catch (e) { toast(e.message, true); }
+}
+
+async function deletePrompt(id) {
+  if (!confirm("Delete this prompt?")) return;
+  try {
+    await api("/prompts/" + id, { method: "DELETE" });
+    toast("Deleted ✅");
+    if (editingPromptId === id) hideEditor();
+    loadPrompts();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function loadVersions(promptId) {
+  try {
+    const versions = await api(`/prompts/${promptId}/versions`);
+    $("versionsPanel").classList.remove("hidden");
+    if (!versions.length) { $("versionsList").innerHTML = '<p style="color:#64748b;">No versions yet.</p>'; return; }
+    $("versionsList").innerHTML = versions.map(v => `
+      <div class="version-item">
+        <b>v${v.version}</b> <small>${new Date(v.created_at).toLocaleString()}</small>
+        <pre>${escapeHtml(v.content_preview)}</pre>
+        <button style="background:transparent;border:1px solid #38bdf8;color:#38bdf8;padding:4px 10px;border-radius:4px;cursor:pointer;margin-top:6px;font-size:11px;"
+          onclick="restoreVersion(${promptId}, ${v.version})">Restore this version</button>
+      </div>
+    `).join("");
+  } catch (e) { /* ignore */ }
+}
+
+async function restoreVersion(promptId, version) {
+  if (!confirm(`Restore to v${version}? A new version will be created.`)) return;
+  try {
+    await api(`/prompts/${promptId}/versions/${version}/restore`, { method: "POST" });
+    toast("Restored ✅");
+    editPrompt(promptId);
+    loadPrompts();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function useInPlayground(id) {
+  try {
+    const p = await api("/prompts/" + id);
+    $("playPrompt").value = p.content;
+    showTab("playground");
+  } catch (e) { toast(e.message, true); }
+}
+
+// ====== PLAYGROUND ======
+async function runLLM() {
+  const prompt = $("playPrompt").value.trim();
+  if (!prompt) { toast("Enter a prompt first", true); return; }
+  const out = $("singleOutput");
+  $("compareOutput").innerHTML = "";
+  out.innerHTML = '<div class="output loading">⏳ Calling Groq...</div>';
+  try {
+    const res = await api("/llm/run", {
+      method: "POST",
+      body: JSON.stringify({
+        provider: "groq",
+        model: $("playModel").value,
+        prompt,
+        max_tokens: parseInt($("playMax").value),
+      }),
+    });
+    out.innerHTML = `
+      <div class="output">${escapeHtml(res.output)}</div>
+      <div class="meta">Model: <b>${escapeHtml(res.model)}</b> · Latency: <b>${res.latency_ms}ms</b> · Tokens: <b>${res.tokens?.total ?? "?"}</b></div>
+    `;
+  } catch (e) {
+    out.innerHTML = `<div class="output" style="color:#ef4444;">❌ ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function compareLLM() {
+  const prompt = $("playPrompt").value.trim();
+  if (!prompt) { toast("Enter a prompt first", true); return; }
+  const out = $("compareOutput");
+  $("singleOutput").innerHTML = "";
+  out.innerHTML = '<div class="output loading">⏳ Comparing Groq models...</div>';
+  try {
+    const res = await api("/llm/openai/compare-models", {
+      method: "POST",
+      body: JSON.stringify({
+        prompt,
+        models: ["openai/gpt-oss-120b", "openai/gpt-oss-20b"],
+        max_tokens: parseInt($("playMax").value),
+      }),
+    });
+    out.innerHTML = `<div class="compare-grid">
+      ${res.results.map(r => `
+        <div class="compare-card">
+          <h4>${escapeHtml(r.model)} ${r.ok ? "✅" : "❌"}</h4>
+          <div class="output" ${!r.ok ? 'style="color:#ef4444;"' : ""}>
+            ${escapeHtml(r.ok ? r.output : r.error)}
+          </div>
+          ${r.ok ? `<div class="meta">Latency: <b>${r.latency_ms}ms</b> · Tokens: <b>${r.tokens?.total ?? "?"}</b></div>` : ""}
+        </div>
+      `).join("")}
+    </div>`;
+  } catch (e) {
+    out.innerHTML = `<div class="output" style="color:#ef4444;">❌ ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+// ====== INIT ======
+if (token) enterApp();
+else $("authScreen").classList.remove("hidden");
+
+// Enter key submits auth
+$("authPassword").addEventListener("keydown", e => { if (e.key === "Enter") submitAuth(); });
+</script>
+</body>
+</html>
